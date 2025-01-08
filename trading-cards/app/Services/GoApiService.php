@@ -34,15 +34,10 @@ class GoApiService
                     'prompt' => $prompt,
                     'aspect_ratio' => $aspectRatio,
                     'process_mode' => 'fast',
-                    'skip_prompt_check' => false,
-                    'bot_id' => 0
-                ],
-                'config' => [
-                    'service_mode' => '',
-                    'webhook_config' => [
-                        'endpoint' => '',
-                        'secret' => ''
-                    ]
+                    'skip_prompt_check' => true,
+                    'bot_id' => 0,
+                    'num_images' => 4,
+                    'quality' => 'standard'
                 ]
             ]);
 
@@ -57,16 +52,55 @@ class GoApiService
             $data = $response->json();
             \Log::info('GoAPI response received', [
                 'status' => $response->status(),
-                'hasImageUrls' => isset($data['output']['image_urls'])
+                'response' => $data
             ]);
-            
-            // Extract all image URLs from the response
-            $imageUrls = $data['output']['image_urls'] ?? [];
-            if (empty($imageUrls)) {
-                throw new Exception('No image URLs in response');
-            }
 
-            return $imageUrls;
+            // Check if we got a task ID first
+            if (isset($data['data']['task_id'])) {
+                $taskId = $data['data']['task_id'];
+                \Log::info('Got task ID', ['task_id' => $taskId]);
+                
+                // Poll for task completion
+                $maxAttempts = 30; // 30 seconds timeout
+                $attempt = 0;
+                
+                while ($attempt < $maxAttempts) {
+                    $statusResponse = Http::withHeaders([
+                        'x-api-key' => $this->apiKey,
+                    ])->get($this->baseUrl . '/task/' . $taskId);
+                    
+                    if ($statusResponse->failed()) {
+                        throw new Exception('Failed to check task status: ' . $statusResponse->body());
+                    }
+                    
+                    $statusData = $statusResponse->json();
+                    \Log::info('Task status check', ['attempt' => $attempt, 'status' => $statusData]);
+                    
+                    if (isset($statusData['data']['status'])) {
+                        $status = $statusData['data']['status'];
+                        \Log::info('Task status check', ['status' => $status]);
+                        
+                        if ($status === 'completed') {
+                            if (isset($statusData['data']['output']['image_urls']) && !empty($statusData['data']['output']['image_urls'])) {
+                                return $statusData['data']['output']['image_urls'];
+                            }
+                            throw new Exception('No image URLs in completed task');
+                        }
+                        
+                        if ($status === 'failed') {
+                            $error = $statusData['data']['error']['message'] ?? 'Unknown error';
+                            throw new Exception('Task failed: ' . $error);
+                        }
+                    }
+                    
+                    $attempt++;
+                    usleep(500000); // Wait 500ms before next check
+                }
+                
+                throw new Exception('Task timed out after ' . $maxAttempts . ' seconds');
+            }
+            
+            throw new Exception('No task ID in response');
 
         } catch (Exception $e) {
             \Log::error('GoAPI service error', [

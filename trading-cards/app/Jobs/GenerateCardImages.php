@@ -31,16 +31,16 @@ class GenerateCardImages implements ShouldQueue
             Log::info('Starting image generation job', ['task_id' => $this->task->id]);
             
             $this->task->markAsProcessing();
-
+            
             $prompt = $this->task->input['prompt'];
             $imageUrls = $goApiService->generateImages($prompt);
-
-            $this->task->markAsCompleted(['image_urls' => $imageUrls]);
             
             Log::info('Image generation completed', [
                 'task_id' => $this->task->id,
                 'image_count' => count($imageUrls)
             ]);
+            
+            $this->task->markAsCompleted(['image_urls' => $imageUrls]);
         } catch (\Exception $e) {
             Log::error('Image generation failed', [
                 'task_id' => $this->task->id,

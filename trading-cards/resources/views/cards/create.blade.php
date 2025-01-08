@@ -80,7 +80,7 @@
 
                                 <!-- Image Variations Grid -->
                                 <div id="image-variations" class="hidden">
-                                    <x-input-label :value="__('Select an Image Variation')" />
+                                    <x-input-label for="image_variations" :value="__('Select an Image Variation')" />
                                     <div class="grid grid-cols-2 gap-4 mt-2">
                                         <!-- Image variations will be inserted here -->
                                     </div>
@@ -197,8 +197,10 @@
                     const response = await fetch('{{ route('cards.generate-images') }}', {
                         method: 'POST',
                         headers: {
+                            'Accept': 'application/json',
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'X-Requested-With': 'XMLHttpRequest'
                         },
                         body: JSON.stringify({ prompt })
                     });
@@ -226,7 +228,10 @@
                     const pollTask = async () => {
                         const statusResponse = await fetch(`{{ url('cards/tasks') }}/${task_id}`, {
                             headers: {
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                'X-Requested-With': 'XMLHttpRequest'
                             }
                         });
                         

@@ -25,8 +25,12 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('cards', CardController::class);
     Route::post('cards/{card}/publish', [CardController::class, 'publish'])->name('cards.publish');
     Route::post('cards/{card}/unpublish', [CardController::class, 'unpublish'])->name('cards.unpublish');
-    Route::post('cards/generate-images', [CardController::class, 'generateImages'])->name('cards.generate-images');
-    Route::get('cards/tasks/{taskId}', [CardController::class, 'checkTaskStatus'])->name('cards.task-status');
+    Route::post('cards/generate-images', [CardController::class, 'generateImages'])
+        ->middleware(['web', 'auth', \App\Http\Middleware\SetTimeoutMiddleware::class])
+        ->name('cards.generate-images');
+    Route::get('cards/tasks/{taskId}', [CardController::class, 'checkTaskStatus'])
+        ->middleware(['web', 'auth', \App\Http\Middleware\SetTimeoutMiddleware::class])
+        ->name('cards.task-status');
 
     // Packs routes
     Route::resource('packs', PackController::class);

@@ -9,6 +9,8 @@ use App\Services\GoApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class CardController extends Controller
 {
@@ -29,6 +31,10 @@ class CardController extends Controller
 
     public function generateImages(Request $request)
     {
+        if (!$request->isJson()) {
+            return response()->json(['error' => 'JSON request required'], 400);
+        }
+
         try {
             $validated = $request->validate([
                 'prompt' => 'required|string|max:1000',
@@ -41,12 +47,17 @@ class CardController extends Controller
                 'status' => 'pending'
             ]);
 
-            GenerateCardImages::dispatch($task);
+            // Set a longer timeout for the job
+            set_time_limit(120);
+            
+            GenerateCardImages::dispatch($task)->onQueue('default');
 
             return response()->json([
                 'task_id' => $task->id,
                 'status' => 'pending'
             ]);
+        } catch (ValidationException $e) {
+            return response()->json(['error' => $e->errors()], 422);
         } catch (\Exception $e) {
             \Log::error('Failed to create image generation task', [
                 'error' => $e->getMessage(),
@@ -65,12 +76,24 @@ class CardController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
-            return response()->json([
+            $response = [
                 'status' => $task->status,
-                'output' => $task->status === 'completed' ? $task->output : null,
+                'output' => null,
                 'error' => $task->error
-            ]);
+            ];
+
+            if ($task->status === 'completed' && $task->output) {
+                $response['output'] = $task->output;
+            }
+
+            return response()->json($response);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Task not found'], 404);
         } catch (\Exception $e) {
+            \Log::error('Failed to check task status', [
+                'task_id' => $taskId,
+                'error' => $e->getMessage()
+            ]);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }

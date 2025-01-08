@@ -4,6 +4,11 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        @if(config('app.env') === 'local')
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' localhost:*; connect-src 'self' localhost:* ws://localhost:*; style-src 'self' 'unsafe-inline' fonts.bunny.net; font-src 'self' fonts.bunny.net; img-src 'self' data: *;">
+        @else
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self'; style-src 'self' 'unsafe-inline' fonts.bunny.net; font-src 'self' fonts.bunny.net; img-src 'self' data: *;">
+        @endif
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
