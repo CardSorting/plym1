@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Card;
+use App\Models\Task;
+use App\Jobs\GenerateCardImages;
 use App\Services\GoApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -32,9 +34,42 @@ class CardController extends Controller
                 'prompt' => 'required|string|max:1000',
             ]);
 
-            $imageUrls = $this->goApiService->generateImages($validated['prompt']);
+            $task = Task::create([
+                'user_id' => auth()->id(),
+                'type' => 'generate_images',
+                'input' => ['prompt' => $validated['prompt']],
+                'status' => 'pending'
+            ]);
 
-            return response()->json(['image_urls' => $imageUrls]);
+            GenerateCardImages::dispatch($task);
+
+            return response()->json([
+                'task_id' => $task->id,
+                'status' => 'pending'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to create image generation task', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function checkTaskStatus($taskId)
+    {
+        try {
+            $task = Task::findOrFail($taskId);
+            
+            if ($task->user_id !== auth()->id()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            return response()->json([
+                'status' => $task->status,
+                'output' => $task->status === 'completed' ? $task->output : null,
+                'error' => $task->error
+            ]);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }

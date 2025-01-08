@@ -193,7 +193,8 @@
                 this.textContent = 'Generating...';
 
                 try {
-                    const response = await fetch('/cards/generate-images', {
+                    // Start the generation task
+                    const response = await fetch('{{ route('cards.generate-images') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -202,43 +203,87 @@
                         body: JSON.stringify({ prompt })
                     });
 
-                    if (!response.ok) throw new Error('Failed to generate images');
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`Failed to start generation: ${errorData.error || response.statusText}`);
+                    }
                     
-                    const data = await response.json();
+                    const { task_id } = await response.json();
+                    console.log('Task created:', task_id);
+
+                    // Show loading state
                     const variationsGrid = document.querySelector('#image-variations .grid');
-                    variationsGrid.innerHTML = '';
-
-                    data.image_urls.forEach((url, index) => {
-                        const div = document.createElement('div');
-                        div.className = 'relative aspect-square cursor-pointer group';
-                        div.innerHTML = `
-                            <img src="${url}" alt="Variation ${index + 1}" 
-                                class="w-full h-full object-cover rounded-lg transition-opacity hover:opacity-75">
-                            <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
-                                Click to select
-                            </div>
-                        `;
-                        div.addEventListener('click', () => {
-                            // Update hidden input and preview
-                            document.getElementById('selected_image_url').value = url;
-                            const previewImage = document.getElementById('preview-image');
-                            const placeholder = document.getElementById('image-placeholder');
-                            previewImage.src = url;
-                            previewImage.classList.remove('hidden');
-                            placeholder.classList.add('hidden');
-
-                            // Update selection UI
-                            variationsGrid.querySelectorAll('.ring-2').forEach(img => 
-                                img.classList.remove('ring-2', 'ring-indigo-500'));
-                            div.classList.add('ring-2', 'ring-indigo-500');
-                        });
-                        variationsGrid.appendChild(div);
-                    });
-
+                    variationsGrid.innerHTML = `
+                        <div class="col-span-2 text-center py-8">
+                            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                            <p class="mt-2 text-gray-600">Generating images...</p>
+                        </div>
+                    `;
                     document.getElementById('image-variations').classList.remove('hidden');
+
+                    // Poll for task completion
+                    const pollInterval = 2000; // 2 seconds
+                    const pollTask = async () => {
+                        const statusResponse = await fetch(`{{ url('cards/tasks') }}/${task_id}`, {
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            }
+                        });
+                        
+                        if (!statusResponse.ok) {
+                            throw new Error('Failed to check task status');
+                        }
+
+                        const statusData = await statusResponse.json();
+                        console.log('Task status:', statusData);
+
+                        if (statusData.error) {
+                            throw new Error(statusData.error);
+                        }
+
+                        if (statusData.status === 'completed') {
+                            // Clear loading state and show images
+                            variationsGrid.innerHTML = '';
+                            statusData.output.image_urls.forEach((url, index) => {
+                                const div = document.createElement('div');
+                                div.className = 'relative aspect-square cursor-pointer group';
+                                div.innerHTML = `
+                                    <img src="${url}" alt="Variation ${index + 1}" 
+                                        class="w-full h-full object-cover rounded-lg transition-opacity hover:opacity-75">
+                                    <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                                        Click to select
+                                    </div>
+                                `;
+                                div.addEventListener('click', () => {
+                                    // Update hidden input and preview
+                                    document.getElementById('selected_image_url').value = url;
+                                    const previewImage = document.getElementById('preview-image');
+                                    const placeholder = document.getElementById('image-placeholder');
+                                    previewImage.src = url;
+                                    previewImage.classList.remove('hidden');
+                                    placeholder.classList.add('hidden');
+
+                                    // Update selection UI
+                                    variationsGrid.querySelectorAll('.ring-2').forEach(img => 
+                                        img.classList.remove('ring-2', 'ring-indigo-500'));
+                                    div.classList.add('ring-2', 'ring-indigo-500');
+                                });
+                                variationsGrid.appendChild(div);
+                            });
+                            return;
+                        } else if (statusData.status === 'failed') {
+                            throw new Error(statusData.error || 'Generation failed');
+                        }
+
+                        // Continue polling
+                        setTimeout(pollTask, pollInterval);
+                    };
+
+                    // Start polling
+                    setTimeout(pollTask, pollInterval);
                 } catch (error) {
-                    console.error('Error:', error);
-                    alert('Failed to generate images. Please try again.');
+                    console.error('Generation error:', error);
+                    alert(`Failed to generate images: ${error.message}`);
                 } finally {
                     this.disabled = false;
                     this.textContent = 'Generate';

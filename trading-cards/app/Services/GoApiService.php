@@ -18,6 +18,12 @@ class GoApiService
     public function generateImages(string $prompt, string $aspectRatio = '1:1'): array
     {
         try {
+            \Log::info('Initiating GoAPI request', [
+                'prompt' => $prompt,
+                'aspectRatio' => $aspectRatio,
+                'apiKey' => $this->apiKey ? 'present' : 'missing'
+            ]);
+
             $response = Http::withHeaders([
                 'x-api-key' => $this->apiKey,
                 'Content-Type' => 'application/json',
@@ -41,10 +47,18 @@ class GoApiService
             ]);
 
             if ($response->failed()) {
+                \Log::error('GoAPI request failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
                 throw new Exception('Failed to generate images: ' . $response->body());
             }
 
             $data = $response->json();
+            \Log::info('GoAPI response received', [
+                'status' => $response->status(),
+                'hasImageUrls' => isset($data['output']['image_urls'])
+            ]);
             
             // Extract all image URLs from the response
             $imageUrls = $data['output']['image_urls'] ?? [];
@@ -55,6 +69,10 @@ class GoApiService
             return $imageUrls;
 
         } catch (Exception $e) {
+            \Log::error('GoAPI service error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             throw new Exception('Error generating images: ' . $e->getMessage());
         }
     }
