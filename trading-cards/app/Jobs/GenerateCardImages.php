@@ -16,33 +16,15 @@ class GenerateCardImages implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
-     * The number of times the job may be attempted.
-     *
-     * @var int
-     */
-    public $tries = 3;
-
-    /**
-     * The number of seconds to wait before retrying the job.
-     *
-     * @var array
-     */
-    public $backoff = [30, 60, 120];
-
-    /**
-     * The number of seconds the job can run before timing out.
-     *
-     * @var int
-     */
-    public $timeout = 300;
-
-    /**
      * Create a new job instance.
      */
     public function __construct(
         private readonly Task $task
     ) {
-        $this->onQueue('image-generation');
+        $this->onQueue('image-generation')
+             ->tries(3)
+             ->backoff([30, 60, 120])
+             ->timeout(300);
     }
 
     /**

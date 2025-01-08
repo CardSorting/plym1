@@ -47,6 +47,11 @@ return [
                 'queue' => [
                     'job' => VladimirYuldashev\LaravelQueueRabbitMQ\Queue\Jobs\RabbitMQJob::class,
                 ],
+                'exchange' => [
+                    'type' => 'direct',
+                    'durable' => true
+                ],
+                'heartbeat' => 60
             ],
         ],
 
