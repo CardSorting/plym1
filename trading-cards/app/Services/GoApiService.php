@@ -13,6 +13,13 @@ class GoApiService
     public function __construct()
     {
         $this->apiKey = config('services.goapi.key');
+        if (!$this->apiKey) {
+            throw new Exception('GoAPI key is not configured');
+        }
+        \Log::info('GoAPI Service initialized', [
+            'apiKey' => 'configured',
+            'baseUrl' => $this->baseUrl
+        ]);
     }
 
     public function generateImages(string $prompt, string $aspectRatio = '1:1'): array
@@ -24,10 +31,7 @@ class GoApiService
                 'apiKey' => $this->apiKey ? 'present' : 'missing'
             ]);
 
-            $response = Http::withHeaders([
-                'x-api-key' => $this->apiKey,
-                'Content-Type' => 'application/json',
-            ])->post($this->baseUrl . '/task', [
+            $payload = [
                 'model' => 'midjourney',
                 'task_type' => 'imagine',
                 'input' => [
@@ -39,6 +43,23 @@ class GoApiService
                     'num_images' => 4,
                     'quality' => 'standard'
                 ]
+            ];
+
+            \Log::info('Preparing GoAPI request', [
+                'url' => $this->baseUrl . '/task',
+                'payload' => $payload
+            ]);
+
+            $response = Http::withHeaders([
+                'x-api-key' => $this->apiKey,
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json'
+            ])->post($this->baseUrl . '/task', $payload);
+
+            \Log::info('Raw GoAPI response', [
+                'status' => $response->status(),
+                'headers' => $response->headers(),
+                'body' => $response->body()
             ]);
 
             if ($response->failed()) {

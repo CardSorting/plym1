@@ -19,7 +19,7 @@ Route::get('/test-queue', function () {
             'user_id' => auth()->id(),
             'type' => 'generate_images',
             'status' => 'pending',
-            'input' => ['prompt' => 'Test card image generation']
+            'input' => ['prompt' => 'A magical trading card featuring a mystical dragon with glowing blue scales, detailed fantasy art style']
         ]);
         
         \Log::info('Dispatching image generation job', [
@@ -28,7 +28,7 @@ Route::get('/test-queue', function () {
             'goapi_key' => config('services.goapi.key') ? 'present' : 'missing'
         ]);
         
-        GenerateCardImages::dispatch($task);
+        GenerateCardImages::dispatch($task)->onQueue('default');
         
         return 'Job dispatched! Task ID: ' . $task->id;
     } catch (\Exception $e) {

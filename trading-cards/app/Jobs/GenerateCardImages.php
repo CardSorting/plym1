@@ -21,10 +21,21 @@ class GenerateCardImages implements ShouldQueue
     public function __construct(
         private readonly Task $task
     ) {
-        $this->onQueue('image-generation')
+        $this->onQueue('default')
              ->tries(3)
              ->backoff([30, 60, 120])
              ->timeout(300);
+    }
+
+    private function validateTask(): void
+    {
+        if (!isset($this->task->input['prompt'])) {
+            throw new \Exception('Task input must contain a prompt');
+        }
+
+        if (empty($this->task->input['prompt'])) {
+            throw new \Exception('Prompt cannot be empty');
+        }
     }
 
     /**
@@ -34,7 +45,8 @@ class GenerateCardImages implements ShouldQueue
     {
         Log::error('Image generation job failed after retries', [
             'task_id' => $this->task->id,
-            'error' => $exception->getMessage()
+            'error' => $exception->getMessage(),
+            'trace' => $exception->getTraceAsString()
         ]);
         
         $this->task->markAsFailed('Job failed after ' . $this->tries . ' attempts: ' . $exception->getMessage());
@@ -45,14 +57,15 @@ class GenerateCardImages implements ShouldQueue
      */
     public function handle(GoApiService $goApiService): void
     {
-        Log::info('Processing image generation job', [
-            'task_id' => $this->task->id,
-            'attempt' => $this->attempts(),
-            'queue' => $this->queue
-        ]);
-
         try {
-            Log::info('Starting image generation job', ['task_id' => $this->task->id]);
+            $this->validateTask();
+
+            Log::info('Processing image generation job', [
+                'task_id' => $this->task->id,
+                'attempt' => $this->attempts(),
+                'queue' => $this->queue,
+                'prompt' => $this->task->input['prompt']
+            ]);
             
             $this->task->markAsProcessing();
             
@@ -68,7 +81,9 @@ class GenerateCardImages implements ShouldQueue
         } catch (\Exception $e) {
             Log::error('Image generation failed', [
                 'task_id' => $this->task->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'attempt' => $this->attempts()
             ]);
             
             $this->task->markAsFailed($e->getMessage());
