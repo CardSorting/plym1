@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'default' => env('QUEUE_CONNECTION', 'database'),
+    'default' => env('QUEUE_CONNECTION', 'rabbitmq'),
 
     /*
     |--------------------------------------------------------------------------
@@ -29,6 +29,26 @@ return [
     */
 
     'connections' => [
+
+        'rabbitmq' => [
+            'driver' => 'rabbitmq',
+            'queue' => env('RABBITMQ_QUEUE', 'default'),
+            'hosts' => [
+                [
+                    'host' => env('RABBITMQ_HOST', 'possum.lmq.cloudamqp.com'),
+                    'port' => env('RABBITMQ_PORT', 5672),
+                    'user' => env('RABBITMQ_USER', 'vphltgdx'),
+                    'password' => env('RABBITMQ_PASSWORD', 'aViNtmcHte1ywXfq4t0kLizTVa-nCraY'),
+                    'vhost' => env('RABBITMQ_VHOST', 'vphltgdx'),
+                ],
+            ],
+
+            'options' => [
+                'queue' => [
+                    'job' => VladimirYuldashev\LaravelQueueRabbitMQ\Queue\Jobs\RabbitMQJob::class,
+                ],
+            ],
+        ],
 
         'sync' => [
             'driver' => 'sync',

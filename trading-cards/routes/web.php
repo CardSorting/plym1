@@ -4,11 +4,41 @@ use App\Http\Controllers\CardController;
 use App\Http\Controllers\PackController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\ProfileController;
+use App\Jobs\GenerateCardImages;
+use App\Models\Task;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+// Test route for RabbitMQ
+Route::get('/test-queue', function () {
+    try {
+        $task = Task::create([
+            'user_id' => auth()->id(),
+            'type' => 'generate_images',
+            'status' => 'pending',
+            'input' => ['prompt' => 'Test card image generation']
+        ]);
+        
+        \Log::info('Dispatching image generation job', [
+            'task_id' => $task->id,
+            'user_id' => auth()->id(),
+            'goapi_key' => config('services.goapi.key') ? 'present' : 'missing'
+        ]);
+        
+        GenerateCardImages::dispatch($task);
+        
+        return 'Job dispatched! Task ID: ' . $task->id;
+    } catch (\Exception $e) {
+        \Log::error('Failed to dispatch job', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return 'Error: ' . $e->getMessage();
+    }
+})->middleware(['auth']);
 
 Route::middleware(['auth'])->group(function () {
     // Dashboard
