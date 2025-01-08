@@ -23,25 +23,54 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Card Image -->
-                        <div class="relative">
-                            <img src="{{ $card->image_url }}" alt="{{ $card->name }}" class="w-full rounded-lg shadow-lg">
-                            <div class="absolute top-2 right-2">
-                                <span class="px-3 py-1 text-sm font-semibold rounded 
-                                    @if($card->rarity === 'legendary') bg-yellow-500 text-white
-                                    @elseif($card->rarity === 'rare') bg-purple-500 text-white
-                                    @elseif($card->rarity === 'uncommon') bg-blue-500 text-white
-                                    @else bg-gray-500 text-white
-                                    @endif">
-                                    {{ ucfirst($card->rarity) }}
-                                </span>
+                <div class="p-6 space-y-6">
+                    <!-- MTG Style Card -->
+                    <div class="flex justify-center">
+                        <div class="mtg-card w-[375px] h-[525px] relative text-black rounded-[18px] shadow-lg overflow-hidden transition-transform transform hover:scale-105 duration-500">
+                            <div class="card-frame h-full p-3 flex flex-col bg-gradient-to-br from-gray-100 to-gray-200">
+                                <!-- Header: Card Name and Mana Cost -->
+                                <div class="card-header flex justify-between items-center bg-gradient-to-r from-gray-200 to-gray-100 p-2 rounded-t-md mb-1">
+                                    <h2 class="card-name text-xl font-bold text-shadow">{{ $card->name }}</h2>
+                                    <div class="mana-cost flex space-x-1">
+                                        @foreach($card->mana_cost ?? [] as $symbol)
+                                            <div class="mana-symbol rounded-full flex justify-center items-center text-sm font-bold w-6 h-6
+                                                {{ $symbol === 'W' ? 'bg-yellow-200 text-black' :
+                                                   $symbol === 'U' ? 'bg-blue-500 text-white' :
+                                                   $symbol === 'B' ? 'bg-black text-white' :
+                                                   $symbol === 'R' ? 'bg-red-500 text-white' :
+                                                   $symbol === 'G' ? 'bg-green-500 text-white' :
+                                                   'bg-gray-400 text-black' }}">
+                                                {{ $symbol }}
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+
+                                <!-- Card Image -->
+                                <img src="{{ $card->image_url }}" alt="{{ $card->name }}" class="w-full h-[220px] object-cover object-center rounded mb-1">
+
+                                <!-- Card Type -->
+                                <div class="card-type bg-gradient-to-r from-gray-200 to-gray-100 p-2 text-sm border-b border-black border-opacity-20 mb-1">
+                                    {{ $card->card_type ?? 'Creature' }}
+                                </div>
+
+                                <!-- Card Text: Abilities and Flavor Text -->
+                                <div class="card-text bg-gray-100 bg-opacity-90 p-3 rounded flex-grow overflow-y-auto text-sm leading-relaxed">
+                                    <p class="abilities-text mb-2">{{ $card->abilities }}</p>
+                                    <p class="flavor-text mt-2 italic">{{ $card->flavor_text }}</p>
+                                </div>
+
+                                <!-- Footer: Rarity and Power/Toughness -->
+                                <div class="card-footer flex justify-between items-center text-white text-xs mt-1 bg-black bg-opacity-50 p-2 rounded-b-md">
+                                    <span class="rarity-details">{{ ucfirst($card->rarity) }} ({{ $card->set_name }}-{{ $card->card_number }})</span>
+                                    <span class="power-toughness">{{ $card->power_toughness }}</span>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Card Details -->
-                        <div class="space-y-6">
+                    <!-- Card Details -->
+                    <div class="bg-white rounded-lg shadow p-6 space-y-6">
                             <div>
                                 <h3 class="text-lg font-medium text-gray-900">{{ __('Description') }}</h3>
                                 <p class="mt-1 text-gray-600">{{ $card->description }}</p>

@@ -6,16 +6,13 @@ use App\Models\Card;
 use App\Services\GoApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Controller;
 
 class CardController extends Controller
 {
-    private $goApiService;
-
-    public function __construct(GoApiService $goApiService)
-    {
-        $this->goApiService = $goApiService;
-        $this->middleware('auth');
-    }
+    public function __construct(
+        private readonly GoApiService $goApiService
+    ) {}
 
     public function index()
     {
@@ -28,32 +25,61 @@ class CardController extends Controller
         return view('cards.create');
     }
 
+    public function generateImages(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'prompt' => 'required|string|max:1000',
+            ]);
+
+            $imageUrls = $this->goApiService->generateImages($validated['prompt']);
+
+            return response()->json(['image_urls' => $imageUrls]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'required|string',
             'prompt' => 'required|string|max:1000',
-            'rarity' => 'required|in:common,uncommon,rare,legendary'
+            'selected_image_url' => 'required|url',
+            'card_type' => 'nullable|string|max:255',
+            'abilities' => 'nullable|string',
+            'flavor_text' => 'nullable|string',
+            'power_toughness' => 'nullable|string|max:255',
+            'mana_cost' => 'nullable|array',
+            'mana_cost.*' => 'string|in:W,U,B,R,G,C'
         ]);
 
         try {
-            // Generate image using GoAPI
-            $imageUrl = $this->goApiService->generateImage($validated['prompt']);
+            // Generate random rarity and card number
+            $rarity = Card::generateRandomRarity();
+            $cardNumber = Card::generateCardNumber();
 
-            // Create card with generated image
+            // Create card with selected image and additional fields
             $card = Auth::user()->cards()->create([
                 'name' => $validated['name'],
                 'description' => $validated['description'],
-                'image_url' => $imageUrl,
-                'rarity' => $validated['rarity'],
-                'is_published' => false
+                'image_url' => $validated['selected_image_url'],
+                'rarity' => $rarity,
+                'is_published' => false,
+                'card_type' => $validated['card_type'] ?? 'Creature',
+                'abilities' => $validated['abilities'],
+                'flavor_text' => $validated['flavor_text'],
+                'power_toughness' => $validated['power_toughness'],
+                'mana_cost' => $validated['mana_cost'] ?? [],
+                'set_name' => 'AI',
+                'card_number' => $cardNumber
             ]);
 
             return redirect()->route('cards.show', $card)
                 ->with('success', 'Card created successfully!');
         } catch (\Exception $e) {
-            return back()->withErrors(['error' => 'Failed to generate card image: ' . $e->getMessage()]);
+            return back()->withErrors(['error' => 'Failed to create card: ' . $e->getMessage()]);
         }
     }
 
@@ -77,8 +103,17 @@ class CardController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'required|string',
             'rarity' => 'required|in:common,uncommon,rare,legendary',
+            'card_type' => 'nullable|string|max:255',
+            'abilities' => 'nullable|string',
+            'flavor_text' => 'nullable|string',
+            'power_toughness' => 'nullable|string|max:255',
+            'mana_cost' => 'nullable|array',
+            'mana_cost.*' => 'string|in:W,U,B,R,G,C',
             'is_published' => 'boolean'
         ]);
+
+        // Ensure mana_cost is an array even if no checkboxes are selected
+        $validated['mana_cost'] = $validated['mana_cost'] ?? [];
 
         $card->update($validated);
 

@@ -15,7 +15,7 @@ class GoApiService
         $this->apiKey = config('services.goapi.key');
     }
 
-    public function generateImage(string $prompt, string $aspectRatio = '1:1'): string
+    public function generateImages(string $prompt, string $aspectRatio = '1:1'): array
     {
         try {
             $response = Http::withHeaders([
@@ -41,17 +41,21 @@ class GoApiService
             ]);
 
             if ($response->failed()) {
-                throw new Exception('Failed to generate image: ' . $response->body());
+                throw new Exception('Failed to generate images: ' . $response->body());
             }
 
             $data = $response->json();
             
-            // In a real application, you would handle the task ID and poll for results
-            // For now, we'll assume the image URL is returned directly
-            return $data['image_url'] ?? throw new Exception('No image URL in response');
+            // Extract all image URLs from the response
+            $imageUrls = $data['output']['image_urls'] ?? [];
+            if (empty($imageUrls)) {
+                throw new Exception('No image URLs in response');
+            }
+
+            return $imageUrls;
 
         } catch (Exception $e) {
-            throw new Exception('Error generating image: ' . $e->getMessage());
+            throw new Exception('Error generating images: ' . $e->getMessage());
         }
     }
 }

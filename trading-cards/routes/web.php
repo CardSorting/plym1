@@ -25,6 +25,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('cards', CardController::class);
     Route::post('cards/{card}/publish', [CardController::class, 'publish'])->name('cards.publish');
     Route::post('cards/{card}/unpublish', [CardController::class, 'unpublish'])->name('cards.unpublish');
+    Route::post('cards/generate-images', [CardController::class, 'generateImages'])->name('cards.generate-images');
 
     // Packs routes
     Route::resource('packs', PackController::class);

@@ -6,18 +6,17 @@ use App\Models\Pack;
 use App\Models\Store;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Controller;
 
 class PackController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('auth');
-    }
+    public function __construct() {}
 
     public function index()
     {
         $packs = Auth::user()->packs()->with('store')->latest()->paginate(10);
-        return view('packs.index', compact('packs'));
+        $stores = Auth::user()->stores;
+        return view('packs.index', compact('packs', 'stores'));
     }
 
     public function create()
